@@ -46,7 +46,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="NPClient.cs" />
-    <Compile Include="NPExecute.cs" />
+    <Compile Include="NPContract.cs" />
+    <Compile Include="NPConvertor.cs" />
     <Compile Include="NPServer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

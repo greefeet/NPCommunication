@@ -1,12 +1,30 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿#region -- License Terms --
+//
+// NPCommunication
+//
+// Copyright (C) 2016 Khomsan Phonsai
+//
+//    Licensed under the Apache License, Version 2.0 (the "License");
+//    you may not use this file except in compliance with the License.
+//    You may obtain a copy of the License at
+//
+//        http://www.apache.org/licenses/LICENSE-2.0
+//
+//    Unless required by applicable law or agreed to in writing, software
+//    distributed under the License is distributed on an "AS IS" BASIS,
+//    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//    See the License for the specific language governing permissions and
+//    limitations under the License.
+//
+#endregion -- License Terms --
+
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using NPCommunication;
 using System;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.IO;
+using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Linq;
 
 namespace NPCommunicationTest
 {
@@ -37,7 +55,7 @@ namespace NPCommunicationTest
             Assert.AreEqual(server.IsRunning, true);
             Assert.IsTrue(NPServer.IsNamedPipeOpen(PipeName));
 
-            server.Stop();
+            server.Stop().Wait();
             Assert.AreEqual(server.IsRunning, false);
             Assert.IsFalse(NPServer.IsNamedPipeOpen(PipeName));
             Trace.WriteLine("END NPServer01_StartStop " + Counter++.ToString());
@@ -74,9 +92,9 @@ namespace NPCommunicationTest
                     Server2.Start();
                     Assert.AreEqual(Server2.IsRunning, false);
                                         
-                    Server2.Stop();
+                    Server2.Stop().Wait();
                 }
-                Server1.Stop();
+                Server1.Stop().Wait();
                 Assert.AreEqual(Server1.IsRunning, false);
             }
             Assert.IsFalse(NPServer.IsNamedPipeOpen(PipeName));
@@ -94,10 +112,10 @@ namespace NPCommunicationTest
 
             using (NPServer Server = new NPServer(PipeName, VerifyMessage))
             {
-                Server.UpdateCommand<NPCommand>("3Arabe", () => { return "Fedfe"; });
-                Server.UpdateCommand<NPCommand>("3ONE", () => { return "1"; });
-                Server.UpdateCommand<NPCommand>("3Thai", () => { return "ไทย"; });
-                Server.UpdateCommand<NPCommand>("3ไทย", () => { return "Thai ไทย"; });
+                Server.UpdateCommand("3Arabe", args => { return "Fedfe"; });
+                Server.UpdateCommand("3ONE", args => { return "1"; });
+                Server.UpdateCommand("3Thai", args => { return "ไทย"; });
+                Server.UpdateCommand("3ไทย", args => { return "Thai ไทย"; });
                 Assert.IsFalse(NPServer.IsNamedPipeOpen(PipeName));
                 Server.Start();
 
@@ -119,11 +137,11 @@ namespace NPCommunicationTest
                 Assert.AreEqual(Server.IsRunning, true);
 
                 //Update command
-                Server.UpdateCommand<NPCommand>("3ONE", () => { return "New ONE"; });
+                Server.UpdateCommand("3ONE", (o) => { return "New ONE"; });
                 Assert.AreEqual(Client.Get("3ONE"), "New ONE");
                 Assert.AreEqual(Server.IsRunning, true);
 
-                Server.Stop();
+                Server.Stop().Wait();
                 Assert.AreEqual(Server.IsRunning, false);
                 Assert.IsFalse(NPServer.IsNamedPipeOpen(PipeName));
             }
@@ -143,8 +161,8 @@ namespace NPCommunicationTest
             {
                 string Result4Arabe = "Fedfe";
                 string Result4One = "1";
-                Server.UpdateCommand<NPCommand>("4Arabe", () => { return Result4Arabe; });
-                Server.UpdateCommand<NPCommand>("4ONE", () => { return Result4One; });
+                Server.UpdateCommand("4Arabe", args => { return Result4Arabe; });
+                Server.UpdateCommand("4ONE", args => { return Result4One; });
                 Server.Start();
                 Assert.AreEqual(Server.IsRunning, true);
 
@@ -166,7 +184,7 @@ namespace NPCommunicationTest
                     MissingMethodException = true;
                 }
                 Assert.IsTrue(MissingMethodException);
-                Server.Stop();
+                Server.Stop().Wait();
             }
             Assert.IsFalse(NPServer.IsNamedPipeOpen(PipeName));
             Trace.WriteLine("END NPServer04_MissingCommand " + Counter++.ToString());
@@ -195,7 +213,7 @@ namespace NPCommunicationTest
                     UnauthorizedAccessException = true;
                 }
                 Assert.IsTrue(UnauthorizedAccessException);
-                Server.Stop();
+                Server.Stop().Wait();
             }
             Assert.IsFalse(NPServer.IsNamedPipeOpen(PipeName));
             Trace.WriteLine("END NPServer05_VerifyMessageIncurrect " + Counter++.ToString());
@@ -210,8 +228,8 @@ namespace NPCommunicationTest
             Assert.IsFalse(NPServer.IsNamedPipeOpen(PipeName));
             using (NPServer Server = new NPServer(PipeName, VerifyMessage))
             {
-                Server.UpdateCommand<NPCommand>("Arabe", () => { return "Fedfe"; });
-                Server.UpdateCommand<NPCommand>("ONE", () => { return "1"; });
+                Server.UpdateCommand("Arabe", args => { return "Fedfe"; });
+                Server.UpdateCommand("ONE", args => { return "1"; });
                 Server.Start();
                 Assert.AreEqual(Server.IsRunning, true);
 
@@ -256,14 +274,14 @@ namespace NPCommunicationTest
 
 
             NPServer Server = new NPServer(PipeName, VerifyMessage);
-            Server.UpdateCommand<NPCommand>("Fedfe",() => { return "Arabe"; });
+            Server.UpdateCommand("Fedfe", args => { return "Arabe"; });
             Server.Start();
             Assert.AreEqual(Server.IsRunning, true);
             Assert.IsTrue(NPServer.IsNamedPipeOpen(PipeName));
 
             Assert.AreEqual(Client.Get("Fedfe"), "Arabe");
 
-            Server.Stop();
+            Server.Stop().Wait();
             Server.Dispose();
             Assert.AreEqual(Server.IsRunning, false);
             Assert.IsFalse(NPServer.IsNamedPipeOpen(PipeName));
@@ -277,16 +295,155 @@ namespace NPCommunicationTest
             Assert.IsFalse(NPServer.IsNamedPipeOpen(PipeName));
 
             NPServer Server = new NPServer(PipeName, VerifyMessage);
-            Server.UpdateCommand<NPCommand>("Fedfe", () => { return "Arabe"; });
+            Server.UpdateCommand("Fedfe", args => { return "Arabe"; });
             Server.Start();
             Assert.AreEqual(Server.IsRunning, true);
             Assert.IsTrue(NPServer.IsNamedPipeOpen(PipeName));
 
 
-            NPClient Client = new NPClient(System.Environment.MachineName, PipeName, VerifyMessage);
+            NPClient Client = new NPClient(Environment.MachineName, PipeName, VerifyMessage);
             Assert.AreEqual(Client.Get("Fedfe"), "Arabe");
 
-            Server.Stop();
+            Server.Stop().Wait();
+            Server.Dispose();
+            Assert.AreEqual(Server.IsRunning, false);
+            Assert.IsFalse(NPServer.IsNamedPipeOpen(PipeName));
+        }
+        [TestMethod]
+        public void NPServer09_GetCustomContract()
+        {
+            string PipeName = "Test";
+            string VerifyMessage = "TestMessage";
+            Assert.IsFalse(NPServer.IsNamedPipeOpen(PipeName));
+
+            NPServer Server = new NPServer(PipeName, VerifyMessage);
+            CustomContract FromServer = new CustomContract() { Key = "This is Custom", Value = "Custom Value" };
+            Server.UpdateCommand("Custom", args => { return FromServer; });
+            Server.Start();
+
+            Assert.AreEqual(Server.IsRunning, true);
+            Assert.IsTrue(NPServer.IsNamedPipeOpen(PipeName));
+
+            NPClient Client = new NPClient(Environment.MachineName, PipeName, VerifyMessage);
+            CustomContract result = Client.Get<CustomContract>("Custom");
+            Assert.AreEqual(result, FromServer);
+
+            Server.Stop().Wait();
+            Server.Dispose();
+            Assert.AreEqual(Server.IsRunning, false);
+            Assert.IsFalse(NPServer.IsNamedPipeOpen(PipeName));
+        }
+        #region CustomContract
+        [DataContract]
+        public class CustomContract : object
+        {
+            [DataMember(Order = 1)]
+            public string Key { get; set; }
+            [DataMember(Order = 2)]
+            public string Value { get; set; }
+
+            public override bool Equals(object obj)
+            {
+                CustomContract p = obj as CustomContract;
+                return Equals(p);
+            }
+            public bool Equals(CustomContract p)
+            {
+                return p.Key == Key && p.Value == Value;
+            }
+            public override int GetHashCode()
+            {
+                return Key.GetHashCode() ^ Value.GetHashCode();
+            }
+        }
+        #endregion
+
+        [TestMethod]
+        public void NPServer10_GetWithArgs()
+        {
+            string PipeName = "Test";
+            string VerifyMessage = "TestMessage";
+            Assert.IsFalse(NPServer.IsNamedPipeOpen(PipeName));
+
+            NPServer Server = new NPServer(PipeName, VerifyMessage);
+            Server.UpdateCommand("Add", args => {
+                int First = NPConvertor.ToInt(args[0]);
+                int Second = NPConvertor.ToInt(args[1]);
+                return First + Second;
+            });
+            Server.UpdateCommand("Custom", args => {
+                string KEY = NPConvertor.ToString(args[0]);
+                string VALUE = NPConvertor.ToString(args[1]);
+                CustomContract custom = NPConvertor.To<CustomContract>(args[2]);
+                return custom.Key == KEY && custom.Value == VALUE;
+            });
+            Server.Start();
+
+            NPClient Client = new NPClient(Environment.MachineName, PipeName, VerifyMessage);
+            Assert.AreEqual(Client.Get<int>("Add",1,2), 3);
+            Assert.IsFalse(Client.Get<bool>("Custom", "YES", "SIR", new CustomContract() { Key = "YES", Value = "ARABE" }));
+            Assert.IsTrue(Client.Get<bool>("Custom", "YES", "SIR", new CustomContract() { Key = "YES", Value = "SIR" }));
+
+            Server.Stop().Wait();
+            Server.Dispose();
+            Assert.AreEqual(Server.IsRunning, false);
+            Assert.IsFalse(NPServer.IsNamedPipeOpen(PipeName));
+        }
+        
+        [TestMethod]
+        public void NPServer11_NodeHub()
+        {
+            string PipeName = "Test";
+            string VerifyMessage = "TestMessage";
+            Assert.IsFalse(NPServer.IsNamedPipeOpen(PipeName));
+
+            NPServer Server = new NPServer(PipeName, VerifyMessage);
+
+            string ServerName = "Arabe";
+            int ServerNumber = 1;
+            Server.Sync("Name", ServerName);
+            Server.Sync("Number", ServerNumber);
+            Server.Start();
+            
+            NPClient Client = new NPClient(PipeName, VerifyMessage);
+            string ClientName = default(string);
+            int ClientNumber = default(int);
+            Client.Subscribe<string>("Name", v =>  ClientName = v );
+            Client.Subscribe<int>("Number", v => ClientNumber = v );
+
+            Task.Delay(100).Wait();
+
+            Assert.AreEqual(ClientName, ServerName);
+            Assert.AreEqual(ClientNumber, ServerNumber);
+
+            string ServerName2 = "Fedfe";
+            int ServerNumber2 = 2;
+
+            Server.Sync("Name", ServerName2);
+            Server.Sync("Number", ServerNumber2);
+
+            Task.Delay(100).Wait();
+
+            Assert.AreEqual(ClientName, ServerName2);
+            Assert.AreEqual(ClientNumber, ServerNumber2);
+
+            Client.Unsubscribe("Number");
+
+            string ServerName3 = "Yes Sir";
+
+            Server.Sync("Name", ServerName3);
+            Server.Sync("Number", 3); 
+
+            Client.Unsubscribe("Name");
+
+            Task.Delay(100).Wait();
+
+            Assert.AreEqual(ClientName, ServerName3);
+            Assert.AreEqual(ClientNumber, ServerNumber2);
+
+            Client.Unsubscribe("Number");
+
+            Server.Stop().Wait();
             Server.Dispose();
             Assert.AreEqual(Server.IsRunning, false);
             Assert.IsFalse(NPServer.IsNamedPipeOpen(PipeName));
