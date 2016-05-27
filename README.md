@@ -35,28 +35,29 @@ TWO
 Binding real time data as following: 
 
 ```cs
-//sync.exe
+//server.exe
 NPServer server = new NPServer("ServerName", "ServerPassword");
-server.Sync("Data", "FirstSync");
 server.Start();
 
+server.Sync("Data", "FirstSync");
+server.Sync("Data", "SecondSync");
+server.Sync("Data", "ThirdSync");
+
+Console.ReadLine();
+server.Stop();
+```
+```cs
+//client.exe
 string ClientData = null;
 NPClient Client = new NPClient("ServerName", "ServerPassword");
 Client.Subscribe<string>("Data", v =>  {
     Console.WriteLine("ClientData change to : " + v);
     ClientData = v;
 } );
-
-server.Sync("Data", "SecondSync");
-server.Sync("Data", "ThirdSync");
-
-Task.Delay(1000).Wait();
-
-server.Start();
 Console.ReadLine();
-server.Stop();
+Client.Unsubscribe("Data");
 ```
-sync.exe Result :
+client.exe Result :
 ```cmd
 ClientData change to : FirstSync
 ClientData change to : SecondSync
