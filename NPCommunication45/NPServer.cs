@@ -346,11 +346,57 @@ namespace NPCommunication
         }
 
         #region Helper
+        [StructLayout(LayoutKind.Sequential)]
+        private struct FILETIME
+        {
+            public uint dwLowDateTime;
+            public uint dwHighDateTime;
+        }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        private struct WIN32_FIND_DATA
+        {
+            public uint dwFileAttributes;
+            public FILETIME ftCreationTime;
+            public FILETIME ftLastAccessTime;
+            public FILETIME ftLastWriteTime;
+            public uint nFileSizeHigh;
+            public uint nFileSizeLow;
+            public uint dwReserved0;
+            public uint dwReserved1;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
+            public string cFileName;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 14)]
+            public string cAlternateFileName;
+        }
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+        private static extern IntPtr FindFirstFile(string lpFileName, out WIN32_FIND_DATA lpFindFileData);
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+        private static extern int FindNextFile(IntPtr hFindFile, out WIN32_FIND_DATA lpFindFileData);
+        [DllImport("kernel32.dll")]
+        private static extern bool FindClose(IntPtr hFindFile);
+
         public static bool IsNamedPipeOpen(string PipeName)
         {
-            //File.Exists(@"\\.\pipe\" + PipeName)     //Old Style it connect PipeStream and make NPCommunication Failed
-            string[] PIPES = Directory.GetFiles(@"\\.\pipe\");
-            return PIPES.Count(p => p == @"\\.\pipe\" + PipeName) > 0;
+            //Style ONE
+            //return File.Exists(@"\\.\pipe\"+PipeName);
+
+            //Style Two
+            //string[] PIPES = System.IO.Directory.GetFiles(@"\\.\pipe\");
+            //return PIPES.Count(p => p == @"\\.\pipe\" + PipeName) > 0;
+
+            WIN32_FIND_DATA data;
+            IntPtr handle = FindFirstFile(@"\\.\pipe\*", out data);
+            if (handle != new IntPtr(-1))
+            {
+                do
+                    if (data.cFileName == PipeName)
+                        return true;
+                while (FindNextFile(handle, out data) != 0);
+                FindClose(handle);
+            }
+            return false;
         }
         #endregion
     }
