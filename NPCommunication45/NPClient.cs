@@ -166,7 +166,7 @@ namespace NPCommunication
                 //NPData<o>
                 var NPData = Unpacker.Unpack(pipeServer);
 
-                if(NPData.VerifyMessage == VerifyMessage && DataSyncAction.ContainsKey(Channel))
+                if(NPData != null && NPData.VerifyMessage == VerifyMessage && NPData.Channel == Channel && DataSyncAction.ContainsKey(Channel))
                     DataSyncAction[Channel](NPData.Data);
 
                 //Clear Server

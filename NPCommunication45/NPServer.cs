@@ -299,6 +299,7 @@ namespace NPCommunication
                 //MemoryStream StreamData = new MemoryStream(ByteData);
                 byte[] data = SyncData[Channel];
                 //pipeClient.Write(data, 0, data.Length);
+                List<string[]> Remove = new List<string[]>();
                 foreach (string[] sub in Subscriber)
                 {
                     using (NamedPipeClientStream pipeClient = new NamedPipeClientStream(sub[0], string.Format("{0}.{1}.{2}", PipeName, sub[1],Channel), PipeDirection.Out, PipeOptions.Asynchronous))
@@ -312,12 +313,17 @@ namespace NPCommunication
                         catch
                         {
                             if (pipeClient.IsConnected) pipeClient.Close();
+
+                            Remove.Add(sub);
                         }
                         pipeClient.Dispose();
                     }
                 }
-                //StreamData.Close();
-                //StreamData.Dispose();
+                foreach(string[] sub in Remove)
+                {
+                    Subscriber.Remove(sub);
+                }
+                this.Subscriber[Channel] = Subscriber;
             }
         }
         public void Dispose()

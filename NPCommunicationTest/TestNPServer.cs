@@ -408,13 +408,16 @@ namespace NPCommunicationTest
             NPClient Client = new NPClient(PipeName, VerifyMessage);
             string ClientName = default(string);
             int ClientNumber = default(int);
-            Client.Subscribe<string>("Name", v =>  ClientName = v );
+            Client.Subscribe<string>("Name", v => {
+                ClientName = v;
+            } );
             Client.Subscribe<int>("Number", v => ClientNumber = v );
 
             Task.Delay(100).Wait();
 
-            Assert.AreEqual(ClientName, ServerName);
-            Assert.AreEqual(ClientNumber, ServerNumber);
+            //Test First Subscribe Data
+            Assert.AreEqual(ClientName, ServerName);            //Arabe = Arabe
+            Assert.AreEqual(ClientNumber, ServerNumber);        //1 = 1
 
             string ServerName2 = "Fedfe";
             int ServerNumber2 = 2;
@@ -424,24 +427,26 @@ namespace NPCommunicationTest
 
             Task.Delay(100).Wait();
 
-            Assert.AreEqual(ClientName, ServerName2);
-            Assert.AreEqual(ClientNumber, ServerNumber2);
+            //Test First Change Data
+            Assert.AreEqual(ClientName, ServerName2);           //Fedfe = Fedfe
+            Assert.AreEqual(ClientNumber, ServerNumber2);       //2 = 2
 
             Client.Unsubscribe("Number");
-
+            Task.Delay(100).Wait();
             string ServerName3 = "Yes Sir";
 
             Server.Sync("Name", ServerName3);
-            Server.Sync("Number", 3); 
+            Task.Delay(100).Wait();
+            Server.Sync("Number", 3);
+            
+            Assert.AreEqual(ClientName, ServerName3);           //Yes Sir = Yes Sir
+            Assert.AreEqual(ClientNumber, ServerNumber2);       //2 = 2
 
             Client.Unsubscribe("Name");
 
-            Task.Delay(100).Wait();
+            Server.Sync("Name", "NotThings");
 
-            Assert.AreEqual(ClientName, ServerName3);
-            Assert.AreEqual(ClientNumber, ServerNumber2);
-
-            Client.Unsubscribe("Number");
+            Assert.AreEqual(ClientName, ServerName3);           //Yes Sir = Yes Sir
 
             Server.Stop().Wait();
             Server.Dispose();
